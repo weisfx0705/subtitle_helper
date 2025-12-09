@@ -270,9 +270,7 @@ const App: React.FC = () => {
           </a>
           {' '}應用Google Ai Studio開發 2025
         </p>
-        <a href='https://ko-fi.com/J3J3VWQG5' target='_blank' rel='noopener noreferrer' title='請我喝咖啡，謝謝您'>
-          <img src='https://storage.ko-fi.com/cdn/kofi3.png?v=3' alt='Buy Me a Coffee at ko-fi.com' style={{ border: 0, height: '45px' }} />
-        </a>
+
       </footer>
     </div>
   );
