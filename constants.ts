@@ -38,6 +38,5 @@ export const SOURCE_LANGUAGES = [
 ];
 
 export const AI_MODELS = [
-  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash (Recommended)' },
-  { id: 'gemini-2.5-flash-fastest', name: 'Gemini 2.5 Flash (Fastest)' },
+  { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash Preview' },
 ];

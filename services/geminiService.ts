@@ -12,12 +12,12 @@ const BATCH_SIZE = 25; // Process 25 subtitles at a time
  * @returns True if the key has a plausible format, false otherwise.
  */
 export const validateApiKey = (apiKey: string): boolean => {
-    if (!apiKey || typeof apiKey !== 'string') {
-        return false;
-    }
-    // A basic format check. Google AI API keys are non-empty and typically start with "AIza".
-    // This is not a guarantee of validity but catches common input errors.
-    return apiKey.trim().length > 0 && apiKey.startsWith('AIza');
+  if (!apiKey || typeof apiKey !== 'string') {
+    return false;
+  }
+  // A basic format check. Google AI API keys are non-empty and typically start with "AIza".
+  // This is not a guarantee of validity but catches common input errors.
+  return apiKey.trim().length > 0 && apiKey.startsWith('AIza');
 };
 
 const getSystemInstruction = (synopsis: string, characters: string, sourceLanguage: string, targetLanguage: string) => `
@@ -65,80 +65,78 @@ export const translateSubtitlesBatch = async (
   if (!apiKey) {
     throw new Error("API key is not provided.");
   }
-  
+
   const allTranslatedEntries: TranslatedSubtitleEntry[] = [];
   const totalSubtitles = subtitles.length;
 
   for (let i = 0; i < totalSubtitles; i += BATCH_SIZE) {
     const batch = subtitles.slice(i, i + BATCH_SIZE);
-    
+
     const batchInput: BatchTranslationInput[] = batch.map(sub => ({
-        id: sub.id,
-        original_text: sub.text,
-        duration_seconds: calculateDuration(sub.startTime, sub.endTime)
+      id: sub.id,
+      original_text: sub.text,
+      duration_seconds: calculateDuration(sub.startTime, sub.endTime)
     }));
 
     const prompt = `Translate the following subtitle entries. Respond with a JSON array where each object corresponds to an entry in the input array.\n\n${JSON.stringify(batchInput, null, 2)}`;
-    
-    const modelName = 'gemini-2.5-flash';
+
+    const modelName = 'gemini-3-flash-preview';
     const API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-    
+
     const generationConfig: any = {
       responseMimeType: "application/json",
       responseSchema: responseSchema,
     };
 
-    if (model === 'gemini-2.5-flash-fastest') {
-        generationConfig.thinkingConfig = { thinkingBudget: 0 };
-    }
-    
+    // Removed legacy 'gemini-2.5-flash-fastest' check as we are using gemini-3-flash-preview
+
     const requestBody = {
       contents: [{ parts: [{ text: prompt }] }],
       systemInstruction: {
-          parts: [{ text: getSystemInstruction(synopsis, characters, sourceLanguage, targetLanguage) }]
+        parts: [{ text: getSystemInstruction(synopsis, characters, sourceLanguage, targetLanguage) }]
       },
       generationConfig: generationConfig,
     };
 
     try {
-        const res = await fetch(API_ENDPOINT, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(requestBody),
-        });
+      const res = await fetch(API_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
 
-        if (!res.ok) {
-            const errorData = await res.json();
-            const message = errorData?.error?.message || 'An unknown API error occurred.';
-            throw new Error(message);
-        }
+      if (!res.ok) {
+        const errorData = await res.json();
+        const message = errorData?.error?.message || 'An unknown API error occurred.';
+        throw new Error(message);
+      }
 
-        const responseData = await res.json();
-        
-        const jsonStr = responseData?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!jsonStr) {
-            throw new Error('Invalid response structure from API.');
-        }
+      const responseData = await res.json();
 
-        const translatedBatch = JSON.parse(jsonStr) as BatchTranslationOutput[];
+      const jsonStr = responseData?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!jsonStr) {
+        throw new Error('Invalid response structure from API.');
+      }
 
-        const mergedBatch = batch.map(original => {
-            const translated = translatedBatch.find(t => t.id === original.id);
-            return {
-                ...original,
-                translatedText: translated ? translated.translation : `!!TRANSLATION FAILED for id ${original.id}!!`
-            };
-        });
-        
-        allTranslatedEntries.push(...mergedBatch);
+      const translatedBatch = JSON.parse(jsonStr) as BatchTranslationOutput[];
+
+      const mergedBatch = batch.map(original => {
+        const translated = translatedBatch.find(t => t.id === original.id);
+        return {
+          ...original,
+          translatedText: translated ? translated.translation : `!!TRANSLATION FAILED for id ${original.id}!!`
+        };
+      });
+
+      allTranslatedEntries.push(...mergedBatch);
 
     } catch (error) {
-        console.error("Error translating batch:", error);
-        // Rethrow the error to stop the entire translation process.
-        // The UI will handle displaying the specific error.
-        throw error;
+      console.error("Error translating batch:", error);
+      // Rethrow the error to stop the entire translation process.
+      // The UI will handle displaying the specific error.
+      throw error;
     }
 
     onProgress(Math.min(i + BATCH_SIZE, totalSubtitles), totalSubtitles);

@@ -4,7 +4,7 @@
 
 ## 🌟 核心特色：情境感知翻譯 (Context-Aware Translation)
 
-本專案最大的特點在於深度整合了 **Google Gemini 1.5** 的理解能力，解決了傳統機器翻譯的痛點：
+本專案最大的特點在於深度整合了 **Google Gemini 3 Flash Preview** 的理解能力，解決了傳統機器翻譯的痛點：
 
 ### 1. 劇情與角色連貫性
 在翻譯開始前，您需要輸入「劇情大綱」與「角色介紹」。AI 會讀取這些資訊，確保：
@@ -21,17 +21,9 @@
 - 拒絕生硬的直譯 (Literal Translation)。
 - 強調**信、達、雅**，將源語言的文化梗或隱喻，轉換為目標語言受眾能理解的表達方式。
 
-## 🛠️ 技術特點
-- **單一檔案執行**：發布為獨立的 `index2.html`，無需安裝任何伺服器或依賴，直接瀏覽器開啟即可使用。
-- **隱私安全**：所有運算皆透過您的 Google Gemini API Key 直接與 Google 伺服器溝通，**不經過任何第三方後端**，金鑰僅儲存於您的瀏覽器本地端 (LocalStorage)。
-- **批次處理**：智慧分批傳送字幕，確保長影片也能穩定翻譯。
 
-## 🚀 如何使用
-1. 下載 `index2.html` 或前往 GitHub Pages 頁面。
-2. 輸入您的 Google Gemini API Key (可於 Google AI Studio 免費申請)。
-3. 上傳 `.srt` 字幕檔。
-4. 填寫劇情大綱與角色資訊（給予 AI 充足的上下文）。
-5. 開始翻譯並下載成果。
+
+
 
 ---
 *Developed by 義守大學電影與電視學系 陳嘉暐老師 | Powered by Google Gemini AI 2025*
