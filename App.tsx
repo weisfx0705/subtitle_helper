@@ -37,15 +37,15 @@ const App: React.FC = () => {
     setIsApiKeyModalOpen(false);
     // If we were showing an error that the key was bad, clear it.
     if (error && error.toLowerCase().includes('api key')) {
-        handleReset();
+      handleReset();
     }
   };
 
   const handleFileUploaded = useCallback((content: string, name: string) => {
     setError(null);
     if (!apiKey) {
-        setIsApiKeyModalOpen(true);
-        return;
+      setIsApiKeyModalOpen(true);
+      return;
     }
     try {
       const parsedSubtitles = parseSRT(content);
@@ -89,17 +89,29 @@ const App: React.FC = () => {
       setAppState(AppState.Reviewing);
     } catch (e) {
       console.error(e);
-      let errorMessage = '翻譯字幕失敗。請檢查您的網路連線後再試一次。';
-      if (e instanceof Error) {
-        const lowerCaseMessage = e.message.toLowerCase();
-        if (lowerCaseMessage.includes('api key') || lowerCaseMessage.includes('api_key') || lowerCaseMessage.includes('permission denied') || lowerCaseMessage.includes('quota')) {
-          errorMessage = '您的 API 金鑰無效或已超出配額。請檢查您的金鑰或稍後再試。';
-          // Optional: automatically open the API key modal on key failure
-          // setIsApiKeyModalOpen(true);
+
+      // Check if there are partial results we can recover
+      const partialResults = (e as any)?.partialResults;
+      if (partialResults && partialResults.length > 0) {
+        // Show partial results in editor with error banner
+        setTranslatedSubtitles(partialResults);
+        const completedCount = (e as any).completedCount || partialResults.length;
+        const totalCount = (e as any).totalCount || originalSubtitles.length;
+        setError(`翻譯中斷：已完成 ${completedCount}/${totalCount} 條翻譯。${(e as Error).message}\n\n已翻譯的部分已保留，您可以下載目前的結果或重新嘗試。`);
+        setAppState(AppState.Reviewing);
+      } else {
+        let errorMessage = '翻譯字幕失敗。請檢查您的網路連線後再試一次。';
+        if (e instanceof Error) {
+          const lowerCaseMessage = e.message.toLowerCase();
+          if (lowerCaseMessage.includes('api key') || lowerCaseMessage.includes('api_key') || lowerCaseMessage.includes('permission denied') || lowerCaseMessage.includes('quota')) {
+            errorMessage = '您的 API 金鑰無效或已超出配額。請檢查您的金鑰或稍後再試。';
+          } else {
+            errorMessage = `翻譯字幕失敗：${e.message}`;
+          }
         }
+        setError(errorMessage);
+        setAppState(AppState.Context);
       }
-      setError(errorMessage);
-      setAppState(AppState.Context);
     } finally {
       setProgress(null);
     }
@@ -113,7 +125,7 @@ const App: React.FC = () => {
     }
 
     setError(null);
-    
+
     const subtitlesForNewTranslation = source === 'edited'
       ? translatedSubtitles.map(sub => ({ ...sub, text: sub.translatedText }))
       : fileOriginalSubtitles;
@@ -150,15 +162,27 @@ const App: React.FC = () => {
       setAppState(AppState.Reviewing);
     } catch (e) {
       console.error(e);
-      let errorMessage = '重新翻譯字幕失敗，請再試一次。';
-       if (e instanceof Error) {
-        const lowerCaseMessage = e.message.toLowerCase();
-        if (lowerCaseMessage.includes('api key') || lowerCaseMessage.includes('api_key') || lowerCaseMessage.includes('permission denied') || lowerCaseMessage.includes('quota')) {
-          errorMessage = '您的 API 金鑰無效或已超出配額。請檢查您的金鑰或稍後再試。';
+
+      // Check if there are partial results we can recover
+      const partialResults = (e as any)?.partialResults;
+      if (partialResults && partialResults.length > 0) {
+        setTranslatedSubtitles(partialResults);
+        const completedCount = (e as any).completedCount || partialResults.length;
+        const totalCount = (e as any).totalCount || subtitlesForNewTranslation.length;
+        setError(`重新翻譯中斷：已完成 ${completedCount}/${totalCount} 條翻譯。${(e as Error).message}\n\n已翻譯的部分已保留，您可以下載目前的結果或重新嘗試。`);
+      } else {
+        let errorMessage = '重新翻譯字幕失敗，請再試一次。';
+        if (e instanceof Error) {
+          const lowerCaseMessage = e.message.toLowerCase();
+          if (lowerCaseMessage.includes('api key') || lowerCaseMessage.includes('api_key') || lowerCaseMessage.includes('permission denied') || lowerCaseMessage.includes('quota')) {
+            errorMessage = '您的 API 金鑰無效或已超出配額。請檢查您的金鑰或稍後再試。';
+          } else {
+            errorMessage = `重新翻譯字幕失敗：${e.message}`;
+          }
         }
+        setError(errorMessage);
       }
-      setError(errorMessage);
-      setAppState(AppState.Reviewing); 
+      setAppState(AppState.Reviewing);
     } finally {
       setProgress(null);
     }
@@ -166,13 +190,13 @@ const App: React.FC = () => {
 
 
   const handleUpdateTranslation = useCallback((index: number, newText: string) => {
-    setTranslatedSubtitles(prev => 
-      prev.map(entry => 
+    setTranslatedSubtitles(prev =>
+      prev.map(entry =>
         entry.id === index ? { ...entry, translatedText: newText } : entry
       )
     );
   }, []);
-  
+
   const handleDownload = useCallback(() => {
     const srtContent = formatSRT(translatedSubtitles);
     const blob = new Blob([srtContent], { type: 'text/srt' });
@@ -208,19 +232,53 @@ const App: React.FC = () => {
   }, [handleReset]);
 
   const renderContent = () => {
-    if (error) {
-        return (
-            <div className="text-center p-8 bg-red-900/20 border border-red-500 rounded-lg">
-                <h2 className="text-2xl font-bold text-red-400 mb-4">發生錯誤</h2>
-                <p className="text-red-300 mb-6">{error}</p>
-                <button
-                    onClick={handleReset}
-                    className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors"
-                >
-                    重新開始
-                </button>
+    // If we have an error AND we're in Reviewing state with partial results,
+    // show error banner above the editor so user can still download/use partial work
+    if (error && appState === AppState.Reviewing && translatedSubtitles.length > 0) {
+      return (
+        <>
+          <div className="mb-4 p-4 bg-red-900/20 border border-red-500 rounded-lg flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <div className="flex-grow">
+              <h3 className="text-lg font-bold text-red-400 mb-1">⚠️ 翻譯未完成</h3>
+              <p className="text-red-300 text-sm whitespace-pre-line">{error}</p>
             </div>
-        )
+            <button
+              onClick={() => setError(null)}
+              className="px-4 py-2 bg-red-600/50 hover:bg-red-600 text-white text-sm font-semibold rounded-lg transition-colors flex-shrink-0"
+            >
+              關閉提示
+            </button>
+          </div>
+          <TranslationEditor
+            originalSubtitles={originalSubtitles}
+            translatedSubtitles={translatedSubtitles}
+            onUpdateTranslation={handleUpdateTranslation}
+            onDownload={handleDownload}
+            onReset={handleReset}
+            fileName={fileName}
+            onReTranslate={handleReTranslate}
+            originalSourceLanguage={context?.originalSourceLanguage || ''}
+            currentTargetLanguage={context?.targetLanguage || ''}
+            model={context?.model || 'N/A'}
+          />
+        </>
+      );
+    }
+
+    // Standard full-page error for non-Reviewing states
+    if (error) {
+      return (
+        <div className="text-center p-8 bg-red-900/20 border border-red-500 rounded-lg">
+          <h2 className="text-2xl font-bold text-red-400 mb-4">發生錯誤</h2>
+          <p className="text-red-300 mb-6 whitespace-pre-line">{error}</p>
+          <button
+            onClick={handleReset}
+            className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors"
+          >
+            重新開始
+          </button>
+        </div>
+      )
     }
 
     switch (appState) {
@@ -231,18 +289,18 @@ const App: React.FC = () => {
       case AppState.Translating:
         return <Loader progress={progress} />;
       case AppState.Reviewing:
-        return <TranslationEditor 
-                    originalSubtitles={originalSubtitles}
-                    translatedSubtitles={translatedSubtitles} 
-                    onUpdateTranslation={handleUpdateTranslation}
-                    onDownload={handleDownload}
-                    onReset={handleReset}
-                    fileName={fileName}
-                    onReTranslate={handleReTranslate}
-                    originalSourceLanguage={context?.originalSourceLanguage || ''}
-                    currentTargetLanguage={context?.targetLanguage || ''}
-                    model={context?.model || 'N/A'}
-                />;
+        return <TranslationEditor
+          originalSubtitles={originalSubtitles}
+          translatedSubtitles={translatedSubtitles}
+          onUpdateTranslation={handleUpdateTranslation}
+          onDownload={handleDownload}
+          onReset={handleReset}
+          fileName={fileName}
+          onReTranslate={handleReTranslate}
+          originalSourceLanguage={context?.originalSourceLanguage || ''}
+          currentTargetLanguage={context?.targetLanguage || ''}
+          model={context?.model || 'N/A'}
+        />;
       default:
         return <FileUploader onFileUpload={handleFileUploaded} />;
     }
@@ -250,7 +308,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-200 font-sans flex flex-col items-center p-4 sm:p-6 lg:p-8">
-       <ApiKeyModal
+      <ApiKeyModal
         isOpen={isApiKeyModalOpen}
         onClose={() => setIsApiKeyModalOpen(false)}
         onApiKeySubmit={handleApiKeySubmit}
@@ -266,12 +324,12 @@ const App: React.FC = () => {
       <footer className="w-full max-w-7xl mx-auto text-center py-4 text-slate-500 text-sm flex flex-col items-center gap-4">
         <p>
           <a href="https://weisfx0705.github.io/chiawei/" target="_blank" rel="noopener noreferrer" className="hover:text-cyan-400 transition-colors">
-              義守大學電影與電視學系陳嘉暐老師
+            義守大學電影與電視學系陳嘉暐老師
           </a>
           {' '}應用Google Ai Studio開發 2025
         </p>
         <a href='https://ko-fi.com/J3J3VWQG5' target='_blank' rel='noopener noreferrer' title='請我喝咖啡，謝謝您'>
-            <img src='https://storage.ko-fi.com/cdn/kofi3.png?v=3' alt='Buy Me a Coffee at ko-fi.com' style={{ border: 0, height: '45px' }}/>
+          <img src='https://storage.ko-fi.com/cdn/kofi3.png?v=3' alt='Buy Me a Coffee at ko-fi.com' style={{ border: 0, height: '45px' }} />
         </a>
       </footer>
     </div>

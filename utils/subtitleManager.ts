@@ -22,8 +22,8 @@ export const parseSRT = (content: string): SubtitleEntry[] => {
         const lines = block.split('\n');
         if (lines.length >= 3) {
             const id = parseInt(lines[0], 10);
-            const timeMatch = lines[1].match(/(\d{2}:\d{2}:\d{2},\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2},\d{3})/);
-            
+            const timeMatch = lines[1].match(/(\d{1,2}:\d{2}:\d{2},\d{3})\s*-->\s*(\d{1,2}:\d{2}:\d{2},\d{3})/);
+
             if (id && timeMatch) {
                 const startTime = timeMatch[1];
                 const endTime = timeMatch[2];
